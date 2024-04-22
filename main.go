@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -74,6 +75,78 @@ func main() {
 		ctx.JSON(http.StatusOK, gin.H{
 			"id":     book.ID,
 			"create": "ok",
+		})
+	})
+
+	r.PUT("/books", func(ctx *gin.Context) {
+		book := model.Book{}
+		if err := ctx.ShouldBindJSON(&book); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "failed binding json",
+			})
+			return
+		}
+
+		if book.ID == 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "book id required",
+			})
+			return
+		}
+
+		if book.Name == "" {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "book name required",
+			})
+			return
+		}
+
+		tx := db.Model(&book).Updates(model.Book{
+			Name:      book.Name,
+			Author:    book.Author,
+			Publisher: book.Publisher,
+		})
+		if tx.Error != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("failed update book: %s", tx.Error),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"id":     book.ID,
+			"update": "ok",
+		})
+	})
+
+	r.DELETE("/books/:id", func(ctx *gin.Context) {
+		idStr := ctx.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{
+				"error": "invalid id",
+			})
+			return
+		}
+
+		if id == 0 {
+			ctx.JSON(http.StatusOK, gin.H{
+				"error": "invalid id",
+			})
+			return
+		}
+
+		tx := db.Delete(&model.Book{}, id)
+		if tx.Error != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("failed delete book: %s", tx.Error),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"id":     id,
+			"delete": "ok",
 		})
 	})
 
